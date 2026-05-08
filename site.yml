@@ -1,0 +1,6 @@
+---
+- name: Patch Ubuntu systems within maintenance window
+  hosts: all
+  become: true
+  roles:
+    - ubuntu_patch

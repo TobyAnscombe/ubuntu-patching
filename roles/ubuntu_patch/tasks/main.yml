@@ -1,0 +1,4 @@
+---
+- ansible.builtin.import_tasks: check_window.yml
+- ansible.builtin.import_tasks: patch.yml
+- ansible.builtin.import_tasks: reboot.yml

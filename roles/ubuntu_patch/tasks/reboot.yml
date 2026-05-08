@@ -1,0 +1,50 @@
+---
+- name: Log that no reboot is needed
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }}: patching complete, no reboot required."
+  when: not _reboot_required | bool
+
+- name: Log that reboot is suppressed by configuration
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }}: reboot required but ubuntu_patch_reboot_if_required=false — skipping."
+  when:
+    - _reboot_required | bool
+    - not ubuntu_patch_reboot_if_required | bool
+
+- name: Ensure 'at' daemon is available for scheduled reboots
+  ansible.builtin.apt:
+    name: at
+    state: present
+  when:
+    - _reboot_required | bool
+    - ubuntu_patch_reboot_if_required | bool
+    - _before_reboot_window | bool
+
+- name: Schedule reboot at start of reboot window via 'at'
+  ansible.builtin.shell: >
+    echo 'shutdown -r now "Scheduled reboot: patching maintenance"' | at {{ ubuntu_patch_reboot_window_start }}
+  changed_when: true
+  when:
+    - _reboot_required | bool
+    - ubuntu_patch_reboot_if_required | bool
+    - _before_reboot_window | bool
+
+- name: Reboot immediately — within reboot window
+  ansible.builtin.reboot:
+    msg: "Rebooting: patching complete, within reboot window"
+    reboot_timeout: 600
+  when:
+    - _reboot_required | bool
+    - ubuntu_patch_reboot_if_required | bool
+    - _in_reboot_window | bool
+
+- name: Warn that reboot window has passed — manual action required
+  ansible.builtin.debug:
+    msg: >
+      WARNING: {{ inventory_hostname }} requires a reboot but the reboot window
+      ({{ ubuntu_patch_reboot_window_start }}–{{ ubuntu_patch_reboot_window_end }}) has already passed.
+      Manual reboot required.
+  when:
+    - _reboot_required | bool
+    - ubuntu_patch_reboot_if_required | bool
+    - _past_reboot_window | bool

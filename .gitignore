@@ -1,0 +1,37 @@
+# Python / virtualenv
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Ansible runtime
+*.retry
+.ansible/
+
+# Inventory — never commit host lists or secrets
+inventory/
+!inventory/.gitkeep
+
+# Vault / secrets
+*.vault
+vault_password
+vault_password_file
+.vault_pass
+*.enc
+
+# SSH keys
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+
+# macOS
+.DS_Store
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*~

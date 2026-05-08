@@ -1,0 +1,38 @@
+---
+- name: Refresh apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 0
+
+- name: Ensure unattended-upgrades is present (security mode)
+  ansible.builtin.apt:
+    name: unattended-upgrades
+    state: present
+  when: ubuntu_patch_upgrade_type == 'security'
+
+- name: Apply security patches via unattended-upgrades
+  ansible.builtin.command: unattended-upgrade -v
+  register: _unattended_result
+  changed_when: "'Packages that will be upgraded' in _unattended_result.stdout"
+  when: ubuntu_patch_upgrade_type == 'security'
+
+- name: Apply all available updates (full upgrade)
+  ansible.builtin.apt:
+    upgrade: full
+    autoremove: true
+  when: ubuntu_patch_upgrade_type == 'full'
+
+- name: Apply dist upgrade
+  ansible.builtin.apt:
+    upgrade: dist
+    autoremove: true
+  when: ubuntu_patch_upgrade_type == 'dist'
+
+- name: Check for reboot-required flag
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+  register: _reboot_required_file
+
+- name: Set reboot required fact
+  ansible.builtin.set_fact:
+    _reboot_required: "{{ _reboot_required_file.stat.exists }}"

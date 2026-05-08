@@ -1,0 +1,29 @@
+---
+# All times are in HH:MM 24-hour format, interpreted in the managed host's local timezone.
+# Reboot window MUST fall within the maintenance window.
+
+# --- Maintenance Window ---
+# If the playbook runs outside this window the host will wait (pausing Ansible)
+# until the window opens, then proceed automatically.
+ubuntu_patch_maintenance_window_start: "02:00"
+ubuntu_patch_maintenance_window_end: "06:00"
+
+# --- Reboot Window ---
+# Reboot scheduling behaviour:
+#   - If a reboot is required and the current time is BEFORE the reboot window:
+#       a reboot is scheduled via 'at' to fire at ubuntu_patch_reboot_window_start.
+#   - If a reboot is required and the current time is WITHIN the reboot window:
+#       the host is rebooted immediately (Ansible waits for it to come back).
+#   - If a reboot is required and the reboot window has already PASSED:
+#       a warning is logged; no reboot is issued (manual action required).
+ubuntu_patch_reboot_window_start: "04:00"
+ubuntu_patch_reboot_window_end: "06:00"
+
+# Set to false to install patches but never reboot (useful for non-critical fleets).
+ubuntu_patch_reboot_if_required: true
+
+# --- Upgrade type ---
+# security : apply security updates only via unattended-upgrades
+# full     : apt full-upgrade (all available updates)
+# dist     : apt dist-upgrade (may install/remove packages)
+ubuntu_patch_upgrade_type: "security"

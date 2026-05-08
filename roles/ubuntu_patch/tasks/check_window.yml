@@ -1,0 +1,67 @@
+---
+- name: Gather date/time facts from managed host
+  ansible.builtin.setup:
+    gather_subset:
+      - date_time
+
+- name: Convert window boundaries and current time to minutes since midnight
+  ansible.builtin.set_fact:
+    _now_mins: "{{ ansible_date_time.hour | int * 60 + ansible_date_time.minute | int }}"
+    _maint_start_mins: "{{ ubuntu_patch_maintenance_window_start.split(':')[0] | int * 60 + ubuntu_patch_maintenance_window_start.split(':')[1] | int }}"
+    _maint_end_mins: "{{ ubuntu_patch_maintenance_window_end.split(':')[0] | int * 60 + ubuntu_patch_maintenance_window_end.split(':')[1] | int }}"
+
+- name: Determine maintenance window position
+  ansible.builtin.set_fact:
+    _in_maintenance_window: >-
+      {{ _now_mins | int >= _maint_start_mins | int and _now_mins | int < _maint_end_mins | int }}
+    _before_maintenance_window: "{{ _now_mins | int < _maint_start_mins | int }}"
+    _past_maintenance_window: "{{ _now_mins | int >= _maint_end_mins | int }}"
+
+# Minutes until window start — same day if before, next day if window has passed
+- name: Calculate seconds to wait (before window — same day)
+  ansible.builtin.set_fact:
+    _wait_seconds: "{{ (_maint_start_mins | int - _now_mins | int) * 60 }}"
+  when: _before_maintenance_window | bool
+
+- name: Calculate seconds to wait (past window — next day)
+  ansible.builtin.set_fact:
+    _wait_seconds: "{{ (1440 - _now_mins | int + _maint_start_mins | int) * 60 }}"
+  when: _past_maintenance_window | bool
+
+- name: Log wait until maintenance window opens
+  ansible.builtin.debug:
+    msg: >
+      {{ inventory_hostname }} is outside the maintenance window
+      ({{ ubuntu_patch_maintenance_window_start }}–{{ ubuntu_patch_maintenance_window_end }}).
+      Current host time: {{ ansible_date_time.time }}.
+      Waiting {{ (_wait_seconds | int // 60) }} minute(s) until window opens.
+  when: not _in_maintenance_window | bool
+
+- name: Wait until maintenance window opens
+  ansible.builtin.pause:
+    seconds: "{{ _wait_seconds | int }}"
+  when: not _in_maintenance_window | bool
+
+# Refresh time facts after the wait so reboot window positions are accurate
+- name: Re-gather date/time facts after waiting
+  ansible.builtin.setup:
+    gather_subset:
+      - date_time
+  when: not _in_maintenance_window | bool
+
+- name: Recalculate current time after wait
+  ansible.builtin.set_fact:
+    _now_mins: "{{ ansible_date_time.hour | int * 60 + ansible_date_time.minute | int }}"
+  when: not _in_maintenance_window | bool
+
+- name: Determine reboot window position
+  ansible.builtin.set_fact:
+    _reboot_start_mins: "{{ ubuntu_patch_reboot_window_start.split(':')[0] | int * 60 + ubuntu_patch_reboot_window_start.split(':')[1] | int }}"
+    _reboot_end_mins: "{{ ubuntu_patch_reboot_window_end.split(':')[0] | int * 60 + ubuntu_patch_reboot_window_end.split(':')[1] | int }}"
+
+- name: Set reboot window position facts
+  ansible.builtin.set_fact:
+    _before_reboot_window: "{{ _now_mins | int < _reboot_start_mins | int }}"
+    _in_reboot_window: >-
+      {{ _now_mins | int >= _reboot_start_mins | int and _now_mins | int < _reboot_end_mins | int }}
+    _past_reboot_window: "{{ _now_mins | int >= _reboot_end_mins | int }}"
