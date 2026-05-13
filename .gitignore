@@ -27,6 +27,9 @@ vault_password_file
 id_rsa*
 id_ed25519*
 
+# Claude project context — uploaded to claude.ai, not for version control
+CLAUDE.md
+
 # macOS
 .DS_Store
 
