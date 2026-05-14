@@ -29,6 +29,7 @@ id_ed25519*
 
 # Claude project context — uploaded to claude.ai, not for version control
 CLAUDE.md
+.claude/
 
 # macOS
 .DS_Store
