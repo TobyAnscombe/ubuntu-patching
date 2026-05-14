@@ -30,6 +30,8 @@
   ansible.builtin.shell: |
     set -o pipefail
     echo 'shutdown -r now "Scheduled reboot: patching maintenance"' | at {{ ubuntu_patch_reboot_window_start }}
+  args:
+    executable: /bin/bash
   changed_when: true
   when:
     - ubuntu_patch__reboot_required | bool

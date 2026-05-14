@@ -88,7 +88,7 @@ The reboot window **must** fall within the maintenance window. The role validate
 ## Requirements
 
 - Ansible 2.12+
-- Target hosts: Ubuntu 20.04 (Focal), 22.04 (Jammy), 24.04 (Noble)
+- Target hosts: Ubuntu 18.04 (Bionic), 20.04 (Focal), 22.04 (Jammy), 24.04 (Noble)
 - `become: true` (the role requires root to run `apt` and `shutdown`)
 - The `at` package is installed automatically when needed for scheduled reboots
 
