@@ -152,6 +152,9 @@ ansible-playbook site.yml --limit webservers
 
 # Override the upgrade type at run time
 ansible-playbook site.yml --extra-vars "ubuntu_patch_upgrade_type=full"
+
+# Pin all hosts to a specific Ubuntu snapshot for reproducible patching
+ansible-playbook site.yml --extra-vars "ubuntu_patch_frozen_repo_url=https://snapshot.ubuntu.com/ubuntu/20250501T000000Z"
 ```
 
 ---
