@@ -1,4 +1,9 @@
 ---
-- ansible.builtin.import_tasks: check_window.yml
-- ansible.builtin.import_tasks: patch.yml
-- ansible.builtin.import_tasks: reboot.yml
+- name: Check and wait for maintenance window
+  ansible.builtin.import_tasks: check_window.yml
+
+- name: Apply patches
+  ansible.builtin.import_tasks: patch.yml
+
+- name: Handle post-patch reboot
+  ansible.builtin.import_tasks: reboot.yml

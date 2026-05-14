@@ -1,5 +1,7 @@
 ---
 galaxy_info:
+  author: TobyAnscombe
+  license: MIT
   role_name: ubuntu_patch
   description: Patch Ubuntu systems within a defined maintenance and reboot window
   min_ansible_version: "2.12"

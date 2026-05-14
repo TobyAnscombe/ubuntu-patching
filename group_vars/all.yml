@@ -1,6 +1,9 @@
 ---
 # All times are in HH:MM 24-hour format, interpreted in the managed host's local timezone.
-# Reboot window MUST fall within the maintenance window.
+# The role validates all four window values at startup and fails with a clear message if:
+#   - any value is not in HH:MM format
+#   - a start time is not before its end time
+#   - the reboot window does not fall within the maintenance window
 
 # --- Maintenance Window ---
 # If the playbook runs outside this window the host will wait (pausing Ansible)
@@ -9,9 +12,13 @@ ubuntu_patch_maintenance_window_start: "02:00"
 ubuntu_patch_maintenance_window_end: "06:00"
 
 # --- Reboot Window ---
+# Must fall within the maintenance window (validated at startup).
 # Reboot scheduling behaviour:
 #   - If a reboot is required and the current time is BEFORE the reboot window:
 #       a reboot is scheduled via 'at' to fire at ubuntu_patch_reboot_window_start.
+#       A flag file at /var/run/ubuntu_patch_reboot_scheduled prevents a second 'at'
+#       job being queued if the playbook re-runs before the reboot fires. The flag is
+#       cleared automatically on reboot (tmpfs).
 #   - If a reboot is required and the current time is WITHIN the reboot window:
 #       the host is rebooted immediately (Ansible waits for it to come back).
 #   - If a reboot is required and the reboot window has already PASSED:
@@ -23,7 +30,15 @@ ubuntu_patch_reboot_window_end: "06:00"
 ubuntu_patch_reboot_if_required: true
 
 # --- Upgrade type ---
+# Must be one of the three values below; the role fails immediately on any other value.
 # security : apply security updates only via unattended-upgrades
 # full     : apt full-upgrade (all available updates)
 # dist     : apt dist-upgrade (may install/remove packages)
 ubuntu_patch_upgrade_type: "security"
+
+# --- Frozen repository (optional) ---
+# Set to a full http/https URL to replace all apt source URIs before patching.
+# Useful for ensuring every host in a fleet installs identical package versions.
+# Example: "https://snapshot.ubuntu.com/ubuntu/20250501T000000Z"
+# Leave empty (default) to use the existing configured mirrors.
+# ubuntu_patch_frozen_repo_url: ""

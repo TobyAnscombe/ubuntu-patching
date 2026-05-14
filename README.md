@@ -10,7 +10,9 @@ The role runs three phases in sequence:
 
 ### 1. Window check (`check_window.yml`)
 
-The managed host's local clock is read and converted to minutes since midnight. This is compared against the configured maintenance window.
+First validates that all four window variables are in `HH:MM` format, that start precedes end for both windows, and that the reboot window falls within the maintenance window. The role fails immediately with a descriptive message if any constraint is violated.
+
+The managed host's local clock is then read and converted to minutes since midnight and compared against the configured maintenance window.
 
 - **Inside the window** — proceeds immediately to patching.
 - **Outside the window** — logs how long the wait will be, then pauses Ansible until the window opens. If the window has already passed for the day, the wait extends to the next day's window start. After the wait, time facts are refreshed before the reboot window is evaluated.
@@ -18,6 +20,10 @@ The managed host's local clock is read and converted to minutes since midnight. 
 > **Note:** `ansible.builtin.pause` halts the Ansible controller process for the calculated duration. This is intentional — it keeps the playbook stateless and avoids needing external schedulers. For very large fleets where hosts span multiple time zones, use separate inventory groups with per-group `group_vars`.
 
 ### 2. Patch (`patch.yml`)
+
+First validates that `ubuntu_patch_upgrade_type` is one of the three accepted values; the role fails immediately on an unrecognised value rather than silently skipping all patching.
+
+If `ubuntu_patch_frozen_repo_url` is set, the apt sources file is updated to point at that URL before `apt update` runs. This ensures every host in the fleet installs exactly the same package versions regardless of when the playbook executes. A `.bak` copy of the original sources file is created on first run (`force: false`, so the original is preserved across subsequent runs).
 
 Runs `apt update` then applies updates according to `ubuntu_patch_upgrade_type`:
 
@@ -43,7 +49,7 @@ Reboot window:                        [04:00 ──── 06:00]
 
 | Current time | Behaviour |
 |---|---|
-| Before reboot window | Reboot scheduled via `at` to fire at `ubuntu_patch_reboot_window_start`; Ansible does not wait |
+| Before reboot window | Reboot scheduled via `at` to fire at `ubuntu_patch_reboot_window_start`; Ansible does not wait. A flag file at `/var/run/ubuntu_patch_reboot_scheduled` prevents a second `at` job being queued if the playbook runs again before the reboot fires. The flag is cleared automatically on reboot (tmpfs). |
 | Inside reboot window | Immediate reboot; Ansible waits for the host to return (up to 600 s) |
 | After reboot window | Warning logged; no reboot issued — **manual reboot required** |
 
@@ -62,7 +68,7 @@ All variables are prefixed `ubuntu_patch_` and can be set in `group_vars`, `host
 
 ### Reboot window
 
-The reboot window **must** fall within the maintenance window.
+The reboot window **must** fall within the maintenance window. The role validates this at startup and fails with a clear message if the constraint is violated.
 
 | Variable | Default | Description |
 |---|---|---|
@@ -75,6 +81,7 @@ The reboot window **must** fall within the maintenance window.
 | Variable | Default | Options | Description |
 |---|---|---|---|
 | `ubuntu_patch_upgrade_type` | `security` | `security` / `full` / `dist` | Scope of updates to apply |
+| `ubuntu_patch_frozen_repo_url` | `""` | Any `http`/`https` URL | Replace all apt source URIs with this URL before patching; empty = use existing mirrors |
 
 ---
 
@@ -185,6 +192,23 @@ Trigger the playbook just before your maintenance window so hosts that are alrea
 ```cron
 # Run at 01:45 — hosts wait up to 15 min then patch from 02:00
 45 1 * * 2 ansible-playbook /opt/ansible/ubuntu-patching/site.yml >> /var/log/ansible-patch.log 2>&1
+```
+
+### Pinning all hosts to the same package versions (frozen repo)
+
+Set `ubuntu_patch_frozen_repo_url` to a snapshot URL so every host installs identical packages regardless of when the playbook runs. Ubuntu provides an official snapshot service:
+
+```yaml
+# group_vars/all.yml
+ubuntu_patch_frozen_repo_url: "https://snapshot.ubuntu.com/ubuntu/20250501T000000Z"
+```
+
+The role replaces all apt source URIs with this URL before running `apt update`. Both the traditional `/etc/apt/sources.list` format (Ubuntu 22.04 and earlier) and the DEB822 `/etc/apt/sources.list.d/ubuntu.sources` format (Ubuntu 24.04+) are handled automatically.
+
+A `.bak` file is written alongside the original sources file the first time the role runs with a frozen URL. To return to standard mirrors, clear the variable and re-run:
+
+```yaml
+ubuntu_patch_frozen_repo_url: ""
 ```
 
 ### Suppress reboots for stateful workloads

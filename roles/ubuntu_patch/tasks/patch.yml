@@ -1,4 +1,73 @@
 ---
+- name: Validate ubuntu_patch_upgrade_type
+  ansible.builtin.assert:
+    that:
+      - ubuntu_patch_upgrade_type in ['security', 'full', 'dist']
+    fail_msg: >-
+      ubuntu_patch_upgrade_type must be one of 'security', 'full', or 'dist',
+      got: '{{ ubuntu_patch_upgrade_type }}'
+
+- name: Configure frozen apt repository
+  when: ubuntu_patch_frozen_repo_url | length > 0
+  block:
+    - name: Validate frozen repo URL format
+      ansible.builtin.assert:
+        that:
+          - ubuntu_patch_frozen_repo_url is match('^https?://.+')
+        fail_msg: >-
+          ubuntu_patch_frozen_repo_url must be a valid http or https URL,
+          got: '{{ ubuntu_patch_frozen_repo_url }}'
+
+    - name: Check for traditional apt sources.list
+      ansible.builtin.stat:
+        path: /etc/apt/sources.list
+      register: ubuntu_patch__sources_list_file
+
+    - name: Check for DEB822 ubuntu.sources (Ubuntu 24.04+)
+      ansible.builtin.stat:
+        path: /etc/apt/sources.list.d/ubuntu.sources
+      register: ubuntu_patch__ubuntu_sources_file
+
+    - name: Assert at least one apt sources file is present
+      ansible.builtin.assert:
+        that:
+          - ubuntu_patch__sources_list_file.stat.exists or ubuntu_patch__ubuntu_sources_file.stat.exists
+        fail_msg: >-
+          Neither /etc/apt/sources.list nor /etc/apt/sources.list.d/ubuntu.sources
+          was found. Cannot configure frozen repository.
+
+    - name: Back up traditional sources.list
+      ansible.builtin.copy:
+        src: /etc/apt/sources.list
+        dest: /etc/apt/sources.list.bak
+        remote_src: true
+        force: false
+        mode: preserve
+      when: ubuntu_patch__sources_list_file.stat.exists
+
+    - name: Back up DEB822 ubuntu.sources
+      ansible.builtin.copy:
+        src: /etc/apt/sources.list.d/ubuntu.sources
+        dest: /etc/apt/sources.list.d/ubuntu.sources.bak
+        remote_src: true
+        force: false
+        mode: preserve
+      when: ubuntu_patch__ubuntu_sources_file.stat.exists
+
+    - name: Set frozen repo URL in traditional sources.list
+      ansible.builtin.replace:
+        path: /etc/apt/sources.list
+        regexp: '(^deb\s+)https?://[^\s]+(\s)'
+        replace: '\g<1>{{ ubuntu_patch_frozen_repo_url }}\g<2>'
+      when: ubuntu_patch__sources_list_file.stat.exists
+
+    - name: Set frozen repo URL in DEB822 ubuntu.sources
+      ansible.builtin.replace:
+        path: /etc/apt/sources.list.d/ubuntu.sources
+        regexp: '(^URIs:\s+)https?://[^\s]+'
+        replace: '\g<1>{{ ubuntu_patch_frozen_repo_url }}'
+      when: ubuntu_patch__ubuntu_sources_file.stat.exists
+
 - name: Refresh apt cache
   ansible.builtin.apt:
     update_cache: true
@@ -12,8 +81,8 @@
 
 - name: Apply security patches via unattended-upgrades
   ansible.builtin.command: unattended-upgrade -v
-  register: _unattended_result
-  changed_when: "'Packages that will be upgraded' in _unattended_result.stdout"
+  register: ubuntu_patch__unattended_result
+  changed_when: "'Packages that will be upgraded' in ubuntu_patch__unattended_result.stdout"
   when: ubuntu_patch_upgrade_type == 'security'
 
 - name: Apply all available updates (full upgrade)
@@ -31,8 +100,8 @@
 - name: Check for reboot-required flag
   ansible.builtin.stat:
     path: /var/run/reboot-required
-  register: _reboot_required_file
+  register: ubuntu_patch__reboot_required_file
 
 - name: Set reboot required fact
   ansible.builtin.set_fact:
-    _reboot_required: "{{ _reboot_required_file.stat.exists }}"
+    ubuntu_patch__reboot_required: "{{ ubuntu_patch__reboot_required_file.stat.exists }}"

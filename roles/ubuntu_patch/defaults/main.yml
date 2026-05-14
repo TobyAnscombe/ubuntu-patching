@@ -7,3 +7,4 @@ ubuntu_patch_reboot_window_end: "06:00"
 
 ubuntu_patch_reboot_if_required: true
 ubuntu_patch_upgrade_type: "security"
+ubuntu_patch_frozen_repo_url: ""
