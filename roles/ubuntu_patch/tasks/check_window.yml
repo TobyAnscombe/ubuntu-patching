@@ -56,24 +56,42 @@
       ({{ ubuntu_patch_maintenance_window_start }}–{{ ubuntu_patch_maintenance_window_end }}).
       Current host time: {{ ansible_facts['date_time'].time }}.
       Waiting {{ (ubuntu_patch__wait_seconds | int // 60) }} minute(s) until window opens.
-  when: not ubuntu_patch__in_maintenance_window | bool
+  when:
+    - not ubuntu_patch__in_maintenance_window | bool
+    - not ansible_check_mode
+
+- name: Log that window wait is bypassed in check mode
+  ansible.builtin.debug:
+    msg: >
+      CHECK MODE: {{ inventory_hostname }} is outside the maintenance window
+      ({{ ubuntu_patch_maintenance_window_start }}–{{ ubuntu_patch_maintenance_window_end }}).
+      Window wait bypassed — no changes will be made.
+  when:
+    - not ubuntu_patch__in_maintenance_window | bool
+    - ansible_check_mode
 
 - name: Wait until maintenance window opens
   ansible.builtin.pause:
     seconds: "{{ ubuntu_patch__wait_seconds | int }}"
-  when: not ubuntu_patch__in_maintenance_window | bool
+  when:
+    - not ubuntu_patch__in_maintenance_window | bool
+    - not ansible_check_mode
 
 # Refresh time facts after the wait so reboot window positions are accurate
 - name: Re-gather date/time facts after waiting
   ansible.builtin.setup:
     gather_subset:
       - date_time
-  when: not ubuntu_patch__in_maintenance_window | bool
+  when:
+    - not ubuntu_patch__in_maintenance_window | bool
+    - not ansible_check_mode
 
 - name: Recalculate current time after wait
   ansible.builtin.set_fact:
     ubuntu_patch__now_mins: "{{ ansible_facts['date_time'].hour | int * 60 + ansible_facts['date_time'].minute | int }}"
-  when: not ubuntu_patch__in_maintenance_window | bool
+  when:
+    - not ubuntu_patch__in_maintenance_window | bool
+    - not ansible_check_mode
 
 - name: Determine reboot window position
   ansible.builtin.set_fact:
