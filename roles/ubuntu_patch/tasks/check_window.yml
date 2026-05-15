@@ -23,7 +23,7 @@
 
 - name: Convert window boundaries and current time to minutes since midnight
   ansible.builtin.set_fact:
-    ubuntu_patch__now_mins: "{{ ansible_date_time.hour | int * 60 + ansible_date_time.minute | int }}"
+    ubuntu_patch__now_mins: "{{ ansible_facts['date_time'].hour | int * 60 + ansible_facts['date_time'].minute | int }}"
     ubuntu_patch__maint_start_mins: >-
       {{ ubuntu_patch_maintenance_window_start.split(':')[0] | int * 60
          + ubuntu_patch_maintenance_window_start.split(':')[1] | int }}
@@ -54,7 +54,7 @@
     msg: >
       {{ inventory_hostname }} is outside the maintenance window
       ({{ ubuntu_patch_maintenance_window_start }}–{{ ubuntu_patch_maintenance_window_end }}).
-      Current host time: {{ ansible_date_time.time }}.
+      Current host time: {{ ansible_facts['date_time'].time }}.
       Waiting {{ (ubuntu_patch__wait_seconds | int // 60) }} minute(s) until window opens.
   when: not ubuntu_patch__in_maintenance_window | bool
 
@@ -72,7 +72,7 @@
 
 - name: Recalculate current time after wait
   ansible.builtin.set_fact:
-    ubuntu_patch__now_mins: "{{ ansible_date_time.hour | int * 60 + ansible_date_time.minute | int }}"
+    ubuntu_patch__now_mins: "{{ ansible_facts['date_time'].hour | int * 60 + ansible_facts['date_time'].minute | int }}"
   when: not ubuntu_patch__in_maintenance_window | bool
 
 - name: Determine reboot window position
