@@ -10,7 +10,8 @@
 # --- Pre-patch checks ---
 
 - name: Wait for apt/dpkg lock to be released
-  ansible.builtin.shell: >
+  ansible.builtin.shell: |
+    set -o pipefail
     ! fuser /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock >/dev/null 2>&1
   args:
     executable: /bin/bash
