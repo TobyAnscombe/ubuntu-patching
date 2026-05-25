@@ -21,7 +21,9 @@
   changed_when: false
 
 - name: Check available disk space on /
-  ansible.builtin.shell: df --output=avail / | tail -1
+  ansible.builtin.shell: |
+    set -o pipefail
+    df --output=avail / | tail -1
   args:
     executable: /bin/bash
   register: ubuntu_patch__free_disk_kb
