@@ -37,6 +37,23 @@ ubuntu_patch_reboot_if_required: true
 # dist     : apt dist-upgrade — all updates, may install or remove packages
 ubuntu_patch_upgrade_type: "upgrade"
 
+# --- Pre-patch checks ---
+# Minimum free disk space (MB) on / before patching begins. Fails fast rather
+# than letting apt fail mid-upgrade with a full disk.
+ubuntu_patch_min_free_disk_mb: 1024
+
+# Maximum seconds to wait for the apt/dpkg lock before giving up.
+# unattended-upgrades often holds the lock at patch time; waiting avoids
+# false failures when the two overlap.
+ubuntu_patch_apt_lock_timeout: 300
+
+# --- Package holds ---
+# Packages listed here are placed on hold before patching and released after.
+# Useful for pinning kernels, drivers, or application packages on servers where
+# an unexpected upgrade would require additional change-management steps.
+# Example: [linux-generic, linux-image-generic, postgresql-16]
+ubuntu_patch_held_packages: []
+
 # --- Frozen repository (optional) ---
 # Set to a full http/https URL to replace all apt source URIs before patching.
 # Useful for ensuring every host in a fleet installs identical package versions.

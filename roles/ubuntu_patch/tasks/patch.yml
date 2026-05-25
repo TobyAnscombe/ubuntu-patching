@@ -7,6 +7,36 @@
       ubuntu_patch_upgrade_type must be one of 'upgrade', 'security', 'full', or 'dist',
       got: '{{ ubuntu_patch_upgrade_type }}'
 
+# --- Pre-patch checks ---
+
+- name: Wait for apt/dpkg lock to be released
+  ansible.builtin.shell: >
+    ! fuser /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock >/dev/null 2>&1
+  args:
+    executable: /bin/bash
+  register: ubuntu_patch__apt_lock
+  until: ubuntu_patch__apt_lock.rc == 0
+  retries: "{{ (ubuntu_patch_apt_lock_timeout | int / 10) | int }}"
+  delay: 10
+  changed_when: false
+
+- name: Check available disk space on /
+  ansible.builtin.shell: df --output=avail / | tail -1
+  args:
+    executable: /bin/bash
+  register: ubuntu_patch__free_disk_kb
+  changed_when: false
+
+- name: Assert sufficient free disk space before patching
+  ansible.builtin.assert:
+    that:
+      - ubuntu_patch__free_disk_kb.stdout | int >= ubuntu_patch_min_free_disk_mb | int * 1024
+    fail_msg: >-
+      Insufficient disk space on /: {{ (ubuntu_patch__free_disk_kb.stdout | int / 1024) | int }} MB free,
+      {{ ubuntu_patch_min_free_disk_mb }} MB required. Free up space before patching.
+
+# --- Frozen repository (optional) ---
+
 - name: Configure frozen apt repository
   when: ubuntu_patch_frozen_repo_url | length > 0
   block:
@@ -68,6 +98,17 @@
         replace: '\g<1>{{ ubuntu_patch_frozen_repo_url }}'
       when: ubuntu_patch__ubuntu_sources_file.stat.exists
 
+# --- Package holds ---
+
+- name: Hold specified packages to prevent upgrade
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop: "{{ ubuntu_patch_held_packages }}"
+  when: ubuntu_patch_held_packages | length > 0
+
+# --- Patching ---
+
 - name: Refresh apt cache
   ansible.builtin.apt:
     update_cache: true
@@ -77,6 +118,7 @@
   ansible.builtin.apt:
     upgrade: safe
     autoremove: false
+  register: ubuntu_patch__upgrade_result
   when: ubuntu_patch_upgrade_type == 'upgrade'
 
 - name: Ensure unattended-upgrades is present (security mode)
@@ -95,13 +137,44 @@
   ansible.builtin.apt:
     upgrade: full
     autoremove: true
+  register: ubuntu_patch__upgrade_result
   when: ubuntu_patch_upgrade_type == 'full'
 
 - name: Apply dist upgrade
   ansible.builtin.apt:
     upgrade: dist
     autoremove: true
+  register: ubuntu_patch__upgrade_result
   when: ubuntu_patch_upgrade_type == 'dist'
+
+# --- Release holds ---
+
+- name: Release held packages
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: install
+  loop: "{{ ubuntu_patch_held_packages }}"
+  when: ubuntu_patch_held_packages | length > 0
+
+# --- Summary ---
+
+- name: Summarise packages upgraded (apt upgrade types)
+  ansible.builtin.debug:
+    msg: "{{ ubuntu_patch__upgrade_result.stdout_lines | default([]) }}"
+  when:
+    - ubuntu_patch_upgrade_type in ['upgrade', 'full', 'dist']
+    - ubuntu_patch__upgrade_result is defined
+    - ubuntu_patch__upgrade_result.stdout_lines | default([]) | length > 0
+
+- name: Summarise packages upgraded (security mode)
+  ansible.builtin.debug:
+    msg: "{{ ubuntu_patch__unattended_result.stdout_lines | default([]) }}"
+  when:
+    - ubuntu_patch_upgrade_type == 'security'
+    - ubuntu_patch__unattended_result is defined
+    - ubuntu_patch__unattended_result.stdout_lines | default([]) | length > 0
+
+# --- Reboot check ---
 
 - name: Check for reboot-required flag
   ansible.builtin.stat:

@@ -8,3 +8,14 @@ ubuntu_patch_reboot_window_end: "06:00"
 ubuntu_patch_reboot_if_required: true
 ubuntu_patch_upgrade_type: "upgrade"
 ubuntu_patch_frozen_repo_url: ""
+
+# Minimum free disk space (MB) required on / before patching begins.
+ubuntu_patch_min_free_disk_mb: 1024
+
+# Packages to hold (prevent from upgrading) for the duration of the run.
+# They are released automatically after patching completes.
+# Example: [linux-generic, linux-image-generic]
+ubuntu_patch_held_packages: []
+
+# Maximum seconds to wait for the apt/dpkg lock before failing.
+ubuntu_patch_apt_lock_timeout: 300

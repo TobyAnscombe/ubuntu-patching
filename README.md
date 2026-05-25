@@ -84,6 +84,19 @@ The reboot window **must** fall within the maintenance window. The role validate
 | `ubuntu_patch_upgrade_type` | `upgrade` | `upgrade` / `security` / `full` / `dist` | Scope of updates to apply |
 | `ubuntu_patch_frozen_repo_url` | `""` | Any `http`/`https` URL | Replace all apt source URIs with this URL before patching; empty = use existing mirrors |
 
+### Pre-patch checks
+
+| Variable | Default | Description |
+|---|---|---|
+| `ubuntu_patch_min_free_disk_mb` | `1024` | Minimum free disk space (MB) on `/` required before patching begins |
+| `ubuntu_patch_apt_lock_timeout` | `300` | Seconds to wait for the apt/dpkg lock before failing |
+
+### Package holds
+
+| Variable | Default | Description |
+|---|---|---|
+| `ubuntu_patch_held_packages` | `[]` | Packages to hold for the duration of the run; released automatically after patching |
+
 ---
 
 ## Requirements
@@ -142,7 +155,7 @@ ubuntu_patch_reboot_if_required: false
 ### Running the playbook
 
 ```bash
-# Dry run — shows what would change without making any changes
+# Dry run — bypasses the window wait, shows what would change
 ansible-playbook site.yml --check --diff
 
 # Live run against all hosts
@@ -156,6 +169,25 @@ ansible-playbook site.yml --extra-vars "ubuntu_patch_upgrade_type=full"
 
 # Pin all hosts to a specific Ubuntu snapshot for reproducible patching
 ansible-playbook site.yml --extra-vars "ubuntu_patch_frozen_repo_url=https://snapshot.ubuntu.com/ubuntu/20250501T000000Z"
+```
+
+### Tags
+
+Each phase has a tag so you can run selectively:
+
+| Tag | Runs |
+|---|---|
+| `window` | Window check and wait only |
+| `patch` | Pre-checks, frozen repo, holds, upgrade, summary |
+| `reboot` | Reboot logic only |
+| `ubuntu_patch` | Entire role |
+
+```bash
+# Skip the window wait — run patch and reboot phases immediately
+ansible-playbook site.yml --tags patch,reboot
+
+# Only run the patch phase (no reboot)
+ansible-playbook site.yml --tags patch
 ```
 
 ---

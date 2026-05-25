@@ -1,9 +1,12 @@
 ---
 - name: Check and wait for maintenance window
   ansible.builtin.import_tasks: check_window.yml
+  tags: [ubuntu_patch, window]
 
 - name: Apply patches
   ansible.builtin.import_tasks: patch.yml
+  tags: [ubuntu_patch, patch]
 
 - name: Handle post-patch reboot
   ansible.builtin.import_tasks: reboot.yml
+  tags: [ubuntu_patch, reboot]
