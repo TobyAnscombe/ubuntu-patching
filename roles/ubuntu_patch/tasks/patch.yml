@@ -2,9 +2,9 @@
 - name: Validate ubuntu_patch_upgrade_type
   ansible.builtin.assert:
     that:
-      - ubuntu_patch_upgrade_type in ['security', 'full', 'dist']
+      - ubuntu_patch_upgrade_type in ['upgrade', 'security', 'full', 'dist']
     fail_msg: >-
-      ubuntu_patch_upgrade_type must be one of 'security', 'full', or 'dist',
+      ubuntu_patch_upgrade_type must be one of 'upgrade', 'security', 'full', or 'dist',
       got: '{{ ubuntu_patch_upgrade_type }}'
 
 - name: Configure frozen apt repository
@@ -72,6 +72,12 @@
   ansible.builtin.apt:
     update_cache: true
     cache_valid_time: 0
+
+- name: Apply standard upgrade (safe — no new or removed packages)
+  ansible.builtin.apt:
+    upgrade: safe
+    autoremove: false
+  when: ubuntu_patch_upgrade_type == 'upgrade'
 
 - name: Ensure unattended-upgrades is present (security mode)
   ansible.builtin.apt:

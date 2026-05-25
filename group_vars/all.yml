@@ -30,11 +30,12 @@ ubuntu_patch_reboot_window_end: "06:00"
 ubuntu_patch_reboot_if_required: true
 
 # --- Upgrade type ---
-# Must be one of the three values below; the role fails immediately on any other value.
-# security : apply security updates only via unattended-upgrades
-# full     : apt full-upgrade (all available updates)
-# dist     : apt dist-upgrade (may install/remove packages)
-ubuntu_patch_upgrade_type: "security"
+# Must be one of the four values below; the role fails immediately on any other value.
+# upgrade  : apt upgrade — all pending updates, never installs new or removes existing packages (default)
+# security : security updates only via unattended-upgrades
+# full     : apt full-upgrade — all updates, may install new packages
+# dist     : apt dist-upgrade — all updates, may install or remove packages
+ubuntu_patch_upgrade_type: "upgrade"
 
 # --- Frozen repository (optional) ---
 # Set to a full http/https URL to replace all apt source URIs before patching.

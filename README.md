@@ -29,6 +29,7 @@ Runs `apt update` then applies updates according to `ubuntu_patch_upgrade_type`:
 
 | Value | Mechanism | Effect |
 |---|---|---|
+| `upgrade` | `apt upgrade` | All pending updates; **never** installs new packages or removes existing ones **(default)** |
 | `security` | `unattended-upgrade -v` | Security updates only (Ubuntu/Debian security origin) |
 | `full` | `apt full-upgrade` | All available updates; may install new packages |
 | `dist` | `apt dist-upgrade` | All updates; may install or remove packages |
@@ -80,7 +81,7 @@ The reboot window **must** fall within the maintenance window. The role validate
 
 | Variable | Default | Options | Description |
 |---|---|---|---|
-| `ubuntu_patch_upgrade_type` | `security` | `security` / `full` / `dist` | Scope of updates to apply |
+| `ubuntu_patch_upgrade_type` | `upgrade` | `upgrade` / `security` / `full` / `dist` | Scope of updates to apply |
 | `ubuntu_patch_frozen_repo_url` | `""` | Any `http`/`https` URL | Replace all apt source URIs with this URL before patching; empty = use existing mirrors |
 
 ---
