@@ -1,0 +1,19 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  secret-scan:
+    uses: TobyAnscombe/github-actions/.github/workflows/gitleaks.yml@main
+    permissions:
+      security-events: write
+
+  ansible-lint:
+    uses: TobyAnscombe/github-actions/.github/workflows/ansible-ci.yml@main
+    with:
+      ansible_lint_version: "26.1.0"
+      requirements_file: ""
