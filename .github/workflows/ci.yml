@@ -25,7 +25,5 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: [secret-scan, ansible-lint, claude-file-check]
     uses: TobyAnscombe/github-actions/.github/workflows/branch-protection.yml@main
-    permissions:
-      administration: write
     with:
       required_checks: '["secret-scan / Scan for secrets", "ansible-lint / Lint Ansible", "claude-file-check / claude-file-check"]'
